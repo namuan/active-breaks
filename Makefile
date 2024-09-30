@@ -22,7 +22,7 @@ package: clean pre-commit ## Run installer
 	pyinstaller main.spec
 
 install-macosx: package ## Installs application in users Application folder
-	./scripts/install-macosx.sh SnapSpan.app
+	./scripts/install-macosx.sh ActiveBreaks.app
 
 .PHONY: help
 .DEFAULT_GOAL := help
