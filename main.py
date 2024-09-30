@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QColor
 from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtGui import QPainter
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QApplication
@@ -15,6 +16,7 @@ from PyQt6.QtWidgets import QHBoxLayout
 from PyQt6.QtWidgets import QLabel
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtWidgets import QSizePolicy
 from PyQt6.QtWidgets import QSpinBox
 from PyQt6.QtWidgets import QSystemTrayIcon
 from PyQt6.QtWidgets import QVBoxLayout
@@ -76,20 +78,73 @@ class BreakActivityWindow(QWidget):
             parent,
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
         )
-        self.setStyleSheet("background-color: #f0f0f0; border: 1px solid #cccccc;")
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #f0f0f0;
+            }
+            QPushButton {
+                background-color: #ff5555;
+                color: white;
+                border: none;
+                padding: 2px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #ff0000;
+            }
+        """)
 
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Top bar with close button
+        top_bar = QHBoxLayout()
+        top_bar.setContentsMargins(0, 0, 0, 0)
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        top_bar.addWidget(spacer)
+
+        close_button = QPushButton("×")
+        close_button.setFixedSize(20, 20)
+        close_button.clicked.connect(self.hide)
+        top_bar.addWidget(close_button)
+
+        main_layout.addLayout(top_bar)
+
+        # Activity label
         self.activity_label = QLabel()
         self.activity_label.setWordWrap(True)
         self.activity_label.setStyleSheet("font-size: 16px; padding: 10px;")
-        layout.addWidget(self.activity_label)
+        main_layout.addWidget(self.activity_label)
 
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
     def set_activity(self, activity):
         """Set the activity text and adjust the window size."""
         self.activity_label.setText(activity)
         self.adjustSize()
+
+    def mousePressEvent(self, event):
+        """Enable dragging the window."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_position = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        """Handle window dragging."""
+        if event.buttons() & Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self.drag_position)
+            event.accept()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle key press events."""
+        if event.key() == Qt.Key.Key_Escape:
+            self.hide()
+        else:
+            super().keyPressEvent(event)
 
 
 class ActiveBreaksApp(QSystemTrayIcon):
