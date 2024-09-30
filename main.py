@@ -1,3 +1,4 @@
+import random
 import sys
 
 from PyQt6.QtCore import QRectF
@@ -17,6 +18,7 @@ from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtWidgets import QSpinBox
 from PyQt6.QtWidgets import QSystemTrayIcon
 from PyQt6.QtWidgets import QVBoxLayout
+from PyQt6.QtWidgets import QWidget
 
 
 class SettingsDialog(QDialog):
@@ -66,6 +68,30 @@ class SettingsDialog(QDialog):
         return self.work_spinbox.value() * 60, self.break_spinbox.value() * 60
 
 
+class BreakActivityWindow(QWidget):
+    """Window to display a random break activity."""
+
+    def __init__(self, parent=None):
+        super().__init__(
+            parent,
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
+        )
+        self.setStyleSheet("background-color: #f0f0f0; border: 1px solid #cccccc;")
+
+        layout = QVBoxLayout()
+        self.activity_label = QLabel()
+        self.activity_label.setWordWrap(True)
+        self.activity_label.setStyleSheet("font-size: 16px; padding: 10px;")
+        layout.addWidget(self.activity_label)
+
+        self.setLayout(layout)
+
+    def set_activity(self, activity):
+        """Set the activity text and adjust the window size."""
+        self.activity_label.setText(activity)
+        self.adjustSize()
+
+
 class ActiveBreaksApp(QSystemTrayIcon):
     """System Tray Application for managing active breaks."""
 
@@ -113,6 +139,19 @@ class ActiveBreaksApp(QSystemTrayIcon):
         # Initialize the icon
         self.update_icon()
 
+        # Initialize break activities
+        self.break_activities = [
+            "Stand up and stretch",
+            "Take a short walk",
+            "Do some deep breathing exercises",
+            "Perform desk exercises",
+            "Get a glass of water",
+            "Rest your eyes by looking at something 20 feet away for 20 seconds",
+        ]
+
+        # Initialize break activity window
+        self.break_window = BreakActivityWindow()
+
     def toggle_work(self):
         """Toggle the work timer."""
         if self.is_active and self.is_working:
@@ -121,11 +160,13 @@ class ActiveBreaksApp(QSystemTrayIcon):
             self.start_work()
 
     def toggle_break(self):
-        """Toggle the break timer."""
+        """Toggle the break timer and show break activity window."""
         if self.is_active and not self.is_working:
             self.stop_timer()
+            self.break_window.hide()
         else:
             self.start_break()
+            self.show_break_activity()
 
     def start_work(self):
         """Start the work timer."""
@@ -146,12 +187,13 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.update_menu_text()
 
     def stop_timer(self):
-        """Stop the active timer."""
+        """Stop the active timer and hide the break activity window."""
         self.timer.stop()
         self.is_active = False
         self.update_icon(0)
         self.setToolTip("")
         self.update_menu_text()
+        self.break_window.hide()
 
     def update_timer(self):
         """Update the timer countdown and UI elements."""
@@ -225,6 +267,18 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.settings.setValue("work_duration", self.work_duration)
         self.settings.setValue("break_duration", self.break_duration)
         self.settings.sync()
+
+    def show_break_activity(self):
+        """Show the break activity window with a random activity."""
+        activity = random.choice(self.break_activities)
+        self.break_window.set_activity(activity)
+
+        # Position the window just below the system tray icon
+        icon_geometry = self.geometry()
+        self.break_window.move(
+            icon_geometry.x(), icon_geometry.y() + icon_geometry.height()
+        )
+        self.break_window.show()
 
 
 def main():
