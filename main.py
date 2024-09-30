@@ -31,7 +31,7 @@ log_file = log_dir / "active_breaks.log"
 
 logging.basicConfig(
     filename=str(log_file),
-    level=logging.INFO,
+    level=logging.DEBUG,  # Changed to DEBUG for more detailed logging
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -42,6 +42,7 @@ class SettingsDialog(QDialog):
 
     def __init__(self, work_duration: int, break_duration: int, parent=None):
         super().__init__(parent)
+        logging.debug("Initializing SettingsDialog")
         self.setWindowTitle("Active Breaks")
         self.setModal(True)
 
@@ -78,10 +79,16 @@ class SettingsDialog(QDialog):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
+        logging.debug("SettingsDialog initialized")
 
     def get_settings(self) -> tuple[int, int]:
         """Retrieve the work and break durations from the dialog."""
-        return self.work_spinbox.value() * 60, self.break_spinbox.value() * 60
+        work_duration = self.work_spinbox.value() * 60
+        break_duration = self.break_spinbox.value() * 60
+        logging.debug(
+            f"Settings retrieved: Work duration: {work_duration}, Break duration: {break_duration}"
+        )
+        return work_duration, break_duration
 
 
 class BreakActivityWindow(QWidget):
@@ -92,6 +99,7 @@ class BreakActivityWindow(QWidget):
             parent,
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
         )
+        logging.debug("Initializing BreakActivityWindow")
         self.setStyleSheet("""
             QWidget {
                 background-color: #f0f0f0;
@@ -133,9 +141,11 @@ class BreakActivityWindow(QWidget):
         main_layout.addWidget(self.activity_label)
 
         self.setLayout(main_layout)
+        logging.debug("BreakActivityWindow initialized")
 
     def set_activity(self, activity):
         """Set the activity text and adjust the window size."""
+        logging.debug(f"Setting break activity: {activity}")
         self.activity_label.setText(activity)
         self.adjustSize()
 
@@ -146,16 +156,19 @@ class BreakActivityWindow(QWidget):
                 event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             )
             event.accept()
+            logging.debug("BreakActivityWindow: Mouse press event (start drag)")
 
     def mouseMoveEvent(self, event):
         """Handle window dragging."""
         if event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self.drag_position)
             event.accept()
+            logging.debug("BreakActivityWindow: Mouse move event (dragging)")
 
     def keyPressEvent(self, event: QKeyEvent):
         """Handle key press events."""
         if event.key() == Qt.Key.Key_Escape:
+            logging.debug("BreakActivityWindow: Escape key pressed, hiding window")
             self.hide()
         else:
             super().keyPressEvent(event)
@@ -166,6 +179,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
     def __init__(self):
         super().__init__()
+        logging.debug("Initializing ActiveBreaksApp")
 
         self.setIcon(QIcon("assets/icon.ico"))
 
@@ -177,6 +191,9 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.break_duration = self.settings.value(
             "break_duration", 300, type=int
         )  # 5 minutes
+        logging.debug(
+            f"Initial settings: Work duration: {self.work_duration}, Break duration: {self.break_duration}"
+        )
 
         # Initialize timer
         self.timer = QTimer()
@@ -202,7 +219,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.work_action.triggered.connect(self.toggle_work)
         self.break_action.triggered.connect(self.toggle_break)
         self.settings_action.triggered.connect(self.show_settings)
-        self.quit_action.triggered.connect(QApplication.instance().quit)
+        self.quit_action.triggered.connect(self.quit_app)
 
         # Set the context menu to the tray icon
         self.setContextMenu(self.menu)
@@ -227,6 +244,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
     def toggle_work(self):
         """Toggle the work timer."""
+        logging.debug("Toggle work timer called")
         if self.is_active and self.is_working:
             self.stop_timer()
         else:
@@ -234,6 +252,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
     def toggle_break(self):
         """Toggle the break timer and show break activity window."""
+        logging.debug("Toggle break timer called")
         if self.is_active and not self.is_working:
             self.stop_timer()
             self.break_window.hide()
@@ -243,33 +262,36 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
     def start_work(self):
         """Start the work timer."""
+        logging.info("Starting work timer")
         self.is_working = True
         self.is_active = True
         self.time_left = self.work_duration
         self.timer.start(1000)  # Update every second
         self.update_timer()
         self.update_menu_text()
-        logging.info("Work timer started")
+        logging.debug(f"Work timer started. Duration: {self.work_duration} seconds")
 
     def start_break(self):
         """Start the break timer."""
+        logging.info("Starting break timer")
         self.is_working = False
         self.is_active = True
         self.time_left = self.break_duration
         self.timer.start(1000)  # Update every second
         self.update_timer()
         self.update_menu_text()
-        logging.info("Break timer started")
+        logging.debug(f"Break timer started. Duration: {self.break_duration} seconds")
 
     def stop_timer(self):
         """Stop the active timer and hide the break activity window."""
+        logging.info("Stopping timer")
         self.timer.stop()
         self.is_active = False
         self.update_icon(0)
         self.setToolTip("")
         self.update_menu_text()
         self.break_window.hide()
-        logging.info("Timer stopped")
+        logging.debug("Timer stopped and UI updated")
 
     def update_timer(self):
         """Update the timer countdown and UI elements."""
@@ -285,7 +307,9 @@ class ActiveBreaksApp(QSystemTrayIcon):
             )
             self.update_icon(progress)
             self.time_left -= 1
+            logging.debug(f"Timer updated: {current_state} - {time_str}")
         else:
+            logging.info("Timer finished")
             self.stop_timer()
 
     def update_icon(self, progress: float = 0):
@@ -317,6 +341,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
         painter.end()
         self.setIcon(QIcon(self.icon_pixmap))
+        logging.debug(f"Icon updated with progress: {progress:.2f}")
 
     def update_menu_text(self):
         """Update the text of the menu actions based on the current state."""
@@ -330,9 +355,13 @@ class ActiveBreaksApp(QSystemTrayIcon):
         else:
             self.work_action.setText("Start Work")
             self.break_action.setText("Start Break")
+        logging.debug(
+            f"Menu text updated. Is active: {self.is_active}, Is working: {self.is_working}"
+        )
 
     def show_settings(self):
         """Display the settings dialog."""
+        logging.info("Opening settings dialog")
         dialog = SettingsDialog(self.work_duration, self.break_duration)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.work_duration, self.break_duration = dialog.get_settings()
@@ -340,9 +369,12 @@ class ActiveBreaksApp(QSystemTrayIcon):
             logging.info(
                 f"Settings updated: Work duration: {self.work_duration}, Break duration: {self.break_duration}"
             )
+        else:
+            logging.info("Settings dialog cancelled")
 
     def save_settings(self):
         """Save the current settings."""
+        logging.debug("Saving settings")
         self.settings.setValue("work_duration", self.work_duration)
         self.settings.setValue("break_duration", self.break_duration)
         self.settings.sync()
@@ -361,14 +393,20 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.break_window.show()
         logging.info(f"Break activity shown: {activity}")
 
+    def quit_app(self):
+        """Quit the application."""
+        logging.info("Quitting application")
+        QApplication.instance().quit()
+
 
 def main():
     """Main function to run the Active Breaks application."""
+    logging.info("Starting Active Breaks application")
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
-    active_app_break = ActiveBreaksApp()
-    active_app_break.show()
-    logging.info("Active Breaks application started")
+    active_breaks_app = ActiveBreaksApp()
+    active_breaks_app.show()
+    logging.info("Active Breaks application started and running")
     sys.exit(app.exec())
 
 

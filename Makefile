@@ -18,7 +18,7 @@ clean: ## Clean package
 	find . -type d -name '__pycache__' | xargs rm -rf
 	rm -rf build dist
 
-package: pre-commit ## Run installer
+package: clean pre-commit ## Run installer
 	pyinstaller main.spec
 
 install-macosx: package ## Installs application in users Application folder

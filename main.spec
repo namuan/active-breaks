@@ -5,35 +5,44 @@ from PyInstaller.utils.hooks import collect_data_files
 block_cipher = None
 
 a = Analysis(['main.py'],
-             pathex=[],
-             binaries=[],
-             datas=collect_data_files('PyQt6'),
-             hiddenimports=['PyQt6'],
-             hookspath=[],
-             runtime_hooks=[],
-             excludes=[],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
-             cipher=block_cipher,
-             noarchive=False)
+             pathex=['.'],
+             binaries=None,
+             datas=[],
+             hiddenimports=[],
+             hookspath=None,
+             runtime_hooks=None,
+             excludes=None,
+             cipher=block_cipher)
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(pyz,
           a.scripts,
-          a.binaries,
-          a.zipfiles,
-          a.datas,
-          [],
-          name='ActiveBreaks',
+          exclude_binaries=True,
+          name='app',
           debug=False,
-          bootloader_ignore_signals=False,
           strip=False,
           upx=True,
-          runtime_tmpdir=None,
-          console=False)
+          console=False,
+          icon='assets\\icon.ico')
 
-app = BUNDLE(exe,
+coll = COLLECT(exe,
+               a.binaries,
+               a.zipfiles,
+               a.datas,
+               strip=False,
+               upx=True,
+               name='ActiveBreaks')
+
+app = BUNDLE(coll,
              name='ActiveBreaks.app',
              icon='assets/icon.icns',
-             bundle_identifier='com.github.namuan.activebreaks')
+             bundle_identifier='com.github.namuan.activebreaks',
+             info_plist={
+                'CFBundleName': 'ActiveBreaks',
+                'CFBundleVersion': '1.0.0',
+                'CFBundleShortVersionString': '1.0.0',
+                'NSPrincipalClass': 'NSApplication',
+                'NSHighResolutionCapable': 'True'
+                }
+             )
