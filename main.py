@@ -211,6 +211,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.blink_timer = QTimer()
         self.blink_timer.timeout.connect(self.blink_icon)
         self.is_icon_visible = True
+        self.blink_color = "amber"  # Can be "amber" or "blue"
 
         # Create custom icon
         self.icon_pixmap = QPixmap(32, 32)
@@ -250,6 +251,9 @@ class ActiveBreaksApp(QSystemTrayIcon):
         # Initialize break activity window
         self.break_window = BreakActivityWindow()
 
+        # Start amber blinking immediately as neither work nor break is active
+        self.start_blinking("amber")
+
         logging.info("ActiveBreaksApp initialized")
 
     def toggle_work(self):
@@ -278,6 +282,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.timer.start(1000)  # Update every second
         self.update_timer()
         self.update_menu_text()
+        self.stop_blinking()  # Stop blinking when work starts
         logging.debug(f"Work timer started. Duration: {self.work_duration} seconds")
 
     def start_break(self):
@@ -290,9 +295,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.update_timer()
         self.update_menu_text()
         self.show_break_activity()
-        self.blink_timer.stop()  # Stop blinking
-        self.is_icon_visible = True
-        self.update_icon()  # Ensure icon is visible
+        self.stop_blinking()  # Stop blinking when break starts
         logging.debug(f"Break timer started. Duration: {self.break_duration} seconds")
 
     def stop_timer(self):
@@ -304,9 +307,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.setToolTip("")
         self.update_menu_text()
         self.break_window.hide()
-        self.blink_timer.stop()  # Stop blinking
-        self.is_icon_visible = True
-        self.update_icon()  # Ensure icon is visible
+        self.start_blinking("amber")  # Start amber blinking when timer stops
         logging.debug("Timer stopped and UI updated")
 
     def update_timer(self):
@@ -328,15 +329,16 @@ class ActiveBreaksApp(QSystemTrayIcon):
             logging.info("Timer finished")
             if self.is_working:
                 self.stop_timer()
+                # Start blue blinking before break
+                self.start_blinking("blue")
                 # Start break after a 3-second delay
                 self.delay_timer.start(3000)
-                self.start_blinking()
                 logging.info("Work finished. Break will start in 3 seconds.")
             else:
                 self.stop_timer()
                 logging.info("Break finished.")
 
-    def update_icon(self, progress: float = 0):
+    def update_icon(self, progress: float = 0, color: str = None):
         """Update the tray icon to reflect the current progress."""
         self.icon_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(self.icon_pixmap)
@@ -359,13 +361,20 @@ class ActiveBreaksApp(QSystemTrayIcon):
             painter.drawPie(0, 0, 32, 32, start_angle, span_angle)
 
         # Draw inner circle
-        inner_color = QColor(0, 120, 212) if self.is_working else QColor(76, 175, 80)
+        if color == "amber":
+            inner_color = QColor(255, 191, 0)  # Amber color
+        elif color == "blue":
+            inner_color = QColor(0, 120, 212)  # Blue color
+        else:
+            inner_color = (
+                QColor(0, 120, 212) if self.is_working else QColor(76, 175, 80)
+            )
         painter.setBrush(inner_color)
         painter.drawEllipse(QRectF(8, 8, 16, 16))
 
         painter.end()
         self.setIcon(QIcon(self.icon_pixmap))
-        logging.debug(f"Icon updated with progress: {progress:.2f}")
+        logging.debug(f"Icon updated with progress: {progress:.2f}, color: {color}")
 
     def update_menu_text(self):
         """Update the text of the menu actions based on the current state."""
@@ -422,19 +431,29 @@ class ActiveBreaksApp(QSystemTrayIcon):
         logging.info("Quitting application")
         QApplication.instance().quit()
 
-    def start_blinking(self):
-        """Start blinking the icon."""
+    def start_blinking(self, color: str):
+        """Start blinking the icon with the specified color."""
+        self.blink_color = color
         self.blink_timer.start(500)  # Blink every 500 ms
-        logging.debug("Icon blinking started")
+        logging.debug(f"{color.capitalize()} icon blinking started")
+
+    def stop_blinking(self):
+        """Stop blinking the icon and reset to normal state."""
+        self.blink_timer.stop()
+        self.is_icon_visible = True
+        self.update_icon()
+        logging.debug("Icon blinking stopped")
 
     def blink_icon(self):
-        """Toggle icon visibility for blinking effect."""
+        """Toggle icon visibility for blinking effect with the current blink color."""
         self.is_icon_visible = not self.is_icon_visible
         if self.is_icon_visible:
-            self.update_icon()
+            self.update_icon(color=self.blink_color)
         else:
             self.setIcon(QIcon())
-        logging.debug(f"Icon blink: {'visible' if self.is_icon_visible else 'hidden'}")
+        logging.debug(
+            f"{self.blink_color.capitalize()} icon blink: {'visible' if self.is_icon_visible else 'hidden'}"
+        )
 
 
 def main():
