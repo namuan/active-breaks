@@ -153,6 +153,8 @@ class ActiveBreaksApp(QSystemTrayIcon):
     def __init__(self):
         super().__init__()
 
+        self.setIcon(QIcon("assets/icon.ico"))
+
         # Initialize settings
         self.settings = QSettings("deskriders", "activebreaks")
         self.work_duration = self.settings.value(
