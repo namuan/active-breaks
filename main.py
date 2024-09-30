@@ -202,6 +202,16 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.is_working = False
         self.is_active = False
 
+        # Initialize delay timer
+        self.delay_timer = QTimer()
+        self.delay_timer.setSingleShot(True)
+        self.delay_timer.timeout.connect(self.start_break)
+
+        # Initialize blink timer
+        self.blink_timer = QTimer()
+        self.blink_timer.timeout.connect(self.blink_icon)
+        self.is_icon_visible = True
+
         # Create custom icon
         self.icon_pixmap = QPixmap(32, 32)
         self.setIcon(QIcon(self.icon_pixmap))
@@ -258,7 +268,6 @@ class ActiveBreaksApp(QSystemTrayIcon):
             self.break_window.hide()
         else:
             self.start_break()
-            self.show_break_activity()
 
     def start_work(self):
         """Start the work timer."""
@@ -280,6 +289,10 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.timer.start(1000)  # Update every second
         self.update_timer()
         self.update_menu_text()
+        self.show_break_activity()
+        self.blink_timer.stop()  # Stop blinking
+        self.is_icon_visible = True
+        self.update_icon()  # Ensure icon is visible
         logging.debug(f"Break timer started. Duration: {self.break_duration} seconds")
 
     def stop_timer(self):
@@ -291,6 +304,9 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.setToolTip("")
         self.update_menu_text()
         self.break_window.hide()
+        self.blink_timer.stop()  # Stop blinking
+        self.is_icon_visible = True
+        self.update_icon()  # Ensure icon is visible
         logging.debug("Timer stopped and UI updated")
 
     def update_timer(self):
@@ -310,7 +326,15 @@ class ActiveBreaksApp(QSystemTrayIcon):
             logging.debug(f"Timer updated: {current_state} - {time_str}")
         else:
             logging.info("Timer finished")
-            self.stop_timer()
+            if self.is_working:
+                self.stop_timer()
+                # Start break after a 3-second delay
+                self.delay_timer.start(3000)
+                self.start_blinking()
+                logging.info("Work finished. Break will start in 3 seconds.")
+            else:
+                self.stop_timer()
+                logging.info("Break finished.")
 
     def update_icon(self, progress: float = 0):
         """Update the tray icon to reflect the current progress."""
@@ -397,6 +421,20 @@ class ActiveBreaksApp(QSystemTrayIcon):
         """Quit the application."""
         logging.info("Quitting application")
         QApplication.instance().quit()
+
+    def start_blinking(self):
+        """Start blinking the icon."""
+        self.blink_timer.start(500)  # Blink every 500 ms
+        logging.debug("Icon blinking started")
+
+    def blink_icon(self):
+        """Toggle icon visibility for blinking effect."""
+        self.is_icon_visible = not self.is_icon_visible
+        if self.is_icon_visible:
+            self.update_icon()
+        else:
+            self.setIcon(QIcon())
+        logging.debug(f"Icon blink: {'visible' if self.is_icon_visible else 'hidden'}")
 
 
 def main():
