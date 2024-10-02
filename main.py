@@ -31,7 +31,7 @@ log_file = log_dir / "active_breaks.log"
 
 logging.basicConfig(
     filename=str(log_file),
-    level=logging.DEBUG,  # Changed to DEBUG for more detailed logging
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
