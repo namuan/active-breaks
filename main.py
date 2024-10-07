@@ -1,8 +1,12 @@
 import logging
 import random
 import sys
+from enum import Enum
 from pathlib import Path
 
+from PyQt6.QtCore import pyqtProperty
+from PyQt6.QtCore import QEasingCurve
+from PyQt6.QtCore import QPropertyAnimation
 from PyQt6.QtCore import QRectF
 from PyQt6.QtCore import QSettings
 from PyQt6.QtCore import Qt
@@ -91,9 +95,113 @@ class SettingsDialog(QDialog):
         return work_duration, break_duration
 
 
-class BreakActivityWindow(QWidget):
-    """Window to display a random break activity."""
+class BreathState(Enum):
+    INHALE = "Inhale"
+    EXHALE = "Exhale"
+    HOLD = "Hold"
 
+
+class BreathingWidget(QWidget):
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent)
+        self._breathe_progress = 0
+
+        # Default values
+        self.min_size = kwargs.get("min_size", 10)
+        self.max_size = kwargs.get("max_size", 200)
+        self.hold_time = kwargs.get("hold_time", 5000)
+        self.breath_time = kwargs.get("breath_time", 7000)
+        self.circle_color = kwargs.get("circle_color", QColor(200, 200, 255))
+        self.text_color = kwargs.get("text_color", QColor(0, 0, 0))
+
+        self._dot_size = self.min_size
+        self.state = BreathState.INHALE
+
+        self.setMinimumSize(self.max_size, self.max_size)
+
+        self.label = QLabel(self.state.value, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.label.setStyleSheet(f"color: {self.text_color.name()}")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+        self.animation = QPropertyAnimation(self, b"dot_size")
+        self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.animation.setDuration(self.breath_time)
+        self.animation.valueChanged.connect(self.update)
+        self.animation.finished.connect(self.on_animation_finished)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet("background:transparent;")
+
+        self.start_inhale()
+
+    def start_inhale(self):
+        self.state = BreathState.INHALE
+        self.label.setText(self.state.value)
+        self.animation.setStartValue(self.min_size)
+        self.animation.setEndValue(self.max_size)
+        self.animation.start()
+
+    def start_exhale(self):
+        self.state = BreathState.EXHALE
+        self.label.setText(self.state.value)
+        self.animation.setStartValue(self.max_size)
+        self.animation.setEndValue(self.min_size)
+        self.animation.start()
+
+    def start(self):
+        """Start the breathing animation."""
+        self.animation.start()
+
+    def stop(self):
+        """Stop the breathing animation."""
+        self.animation.stop()
+        self.breathe_progress = 0
+        self.update()
+
+    def on_animation_finished(self):
+        self.state = BreathState.HOLD
+        self.label.setText(self.state.value)
+        if self.state == BreathState.HOLD:
+            if self._dot_size == self.max_size:
+                QTimer.singleShot(self.hold_time, self.start_exhale)
+            else:
+                QTimer.singleShot(self.hold_time, self.start_inhale)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.circle_color)
+
+        center = self.rect().center()
+        center.setY(center.y())  # Move circle up to make room for text
+        painter.drawEllipse(center, self._dot_size // 2, self._dot_size // 2)
+
+    def get_dot_size(self):
+        return self._dot_size
+
+    def set_dot_size(self, size):
+        if self._dot_size != size:
+            self._dot_size = size
+            self.update()
+
+    @pyqtProperty(float)
+    def breathe_progress(self):
+        return self._breathe_progress
+
+    @breathe_progress.setter
+    def breathe_progress(self, value):
+        self._breathe_progress = value
+        self.update()  # Trigger a repaint when the progress changes
+
+    dot_size = pyqtProperty(int, get_dot_size, set_dot_size)
+
+
+class BreakActivityWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(
             parent,
@@ -140,8 +248,18 @@ class BreakActivityWindow(QWidget):
         self.activity_label.setStyleSheet("font-size: 16px; padding: 10px;")
         main_layout.addWidget(self.activity_label)
 
+        # Add BreathingWidget
+        self.breathing_widget = BreathingWidget(self)
+        main_layout.addWidget(self.breathing_widget)
+
         self.setLayout(main_layout)
         logging.debug("BreakActivityWindow initialized")
+
+    def start_breathing_exercise(self):
+        self.breathing_widget.start()
+
+    def stop_breathing_exercise(self):
+        self.breathing_widget.stop()
 
     def set_activity(self, activity):
         """Set the activity text and adjust the window size."""
@@ -308,6 +426,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.update_menu_text()
         self.break_window.hide()
         self.start_blinking("amber")  # Start amber blinking when timer stops
+        self.break_window.stop_breathing_exercise()
         logging.debug("Timer stopped and UI updated")
 
     def update_timer(self):
