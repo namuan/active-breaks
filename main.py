@@ -44,7 +44,14 @@ logging.basicConfig(
 class SettingsDialog(QDialog):
     """Dialog to configure work and break durations."""
 
-    def __init__(self, work_duration: int, break_duration: int, parent=None):
+    def __init__(
+        self,
+        work_duration: int,
+        break_duration: int,
+        hold_duration: int,
+        breath_duration: int,
+        parent=None,
+    ):
         super().__init__(parent)
         logging.debug("Initializing SettingsDialog")
         self.setWindowTitle("Active Breaks")
@@ -72,6 +79,26 @@ class SettingsDialog(QDialog):
         break_layout.addWidget(self.break_spinbox)
         layout.addLayout(break_layout)
 
+        # Hold duration settings
+        hold_layout = QHBoxLayout()
+        hold_label = QLabel("Hold duration (seconds):")
+        self.hold_spinbox = QSpinBox()
+        self.hold_spinbox.setRange(1, 60)
+        self.hold_spinbox.setValue(hold_duration // 1000)
+        hold_layout.addWidget(hold_label)
+        hold_layout.addWidget(self.hold_spinbox)
+        layout.addLayout(hold_layout)
+
+        # Breath duration settings
+        breath_layout = QHBoxLayout()
+        breath_label = QLabel("Breath duration (seconds):")
+        self.breath_spinbox = QSpinBox()
+        self.breath_spinbox.setRange(1, 60)
+        self.breath_spinbox.setValue(breath_duration // 1000)
+        breath_layout.addWidget(breath_label)
+        breath_layout.addWidget(self.breath_spinbox)
+        layout.addLayout(breath_layout)
+
         # Save and Cancel buttons
         button_layout = QHBoxLayout()
         save_button = QPushButton("Save")
@@ -85,14 +112,16 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
         logging.debug("SettingsDialog initialized")
 
-    def get_settings(self) -> tuple[int, int]:
-        """Retrieve the work and break durations from the dialog."""
+    def get_settings(self) -> tuple[int, int, int, int]:
+        """Retrieve the work, break, hold, and breath durations from the dialog."""
         work_duration = self.work_spinbox.value() * 60
         break_duration = self.break_spinbox.value() * 60
+        hold_duration = self.hold_spinbox.value() * 1000
+        breath_duration = self.breath_spinbox.value() * 1000
         logging.debug(
-            f"Settings retrieved: Work duration: {work_duration}, Break duration: {break_duration}"
+            f"Settings retrieved: Work duration: {work_duration}, Break duration: {break_duration}, Hold duration: {hold_duration}, Breath duration: {breath_duration}"
         )
-        return work_duration, break_duration
+        return work_duration, break_duration, hold_duration, breath_duration
 
 
 class BreathState(Enum):
@@ -202,12 +231,13 @@ class BreathingWidget(QWidget):
 
 
 class BreakActivityWindow(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, hold_duration: int, breath_duration: int, parent=None):
         super().__init__(
             parent,
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
         )
         logging.debug("Initializing BreakActivityWindow")
+        self.setFixedWidth(200)
         self.setStyleSheet("""
             QWidget {
                 background-color: #f0f0f0;
@@ -245,12 +275,15 @@ class BreakActivityWindow(QWidget):
         # Activity label
         self.activity_label = QLabel()
         self.activity_label.setWordWrap(True)
-        self.activity_label.setStyleSheet("font-size: 16px; padding: 10px;")
+        self.activity_label.setStyleSheet("font-size: 16px; padding: 10px")
         main_layout.addWidget(self.activity_label)
 
         # Add BreathingWidget
-        self.breathing_widget = BreathingWidget(self)
+        self.breathing_widget = BreathingWidget(
+            self, hold_time=hold_duration, breath_time=breath_duration
+        )
         main_layout.addWidget(self.breathing_widget)
+        self.breathing_widget.hide()
 
         self.setLayout(main_layout)
         logging.debug("BreakActivityWindow initialized")
@@ -264,6 +297,9 @@ class BreakActivityWindow(QWidget):
     def set_activity(self, activity):
         """Set the activity text and adjust the window size."""
         logging.debug(f"Setting break activity: {activity}")
+        if activity == "Do some deep breathing exercises":
+            self.breathing_widget.show()
+            self.start_breathing_exercise()
         self.activity_label.setText(activity)
         self.adjustSize()
 
@@ -309,8 +345,14 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.break_duration = self.settings.value(
             "break_duration", 300, type=int
         )  # 5 minutes
+        self.hold_duration = self.settings.value(
+            "hold_duration", 5000, type=int
+        )  # 5 seconds
+        self.breath_duration = self.settings.value(
+            "breath_duration", 7000, type=int
+        )  # 7 seconds
         logging.debug(
-            f"Initial settings: Work duration: {self.work_duration}, Break duration: {self.break_duration}"
+            f"Initial settings: Work duration: {self.work_duration}, Break duration: {self.break_duration}, Hold duration: {self.hold_duration}, Breath duration: {self.breath_duration}"
         )
 
         # Initialize timer
@@ -358,16 +400,18 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
         # Initialize break activities
         self.break_activities = [
-            "Stand up and stretch",
-            "Take a short walk",
-            "Do some deep breathing exercises",
-            "Perform desk exercises",
-            "Get a glass of water",
-            "Rest your eyes by looking at something 20 feet away for 20 seconds",
+            "Stand up and stretch",  # show timer
+            "Take a short walk",  # show timer
+            "Do some deep breathing exercises",  # breathing
+            "Perform desk exercises",  # show sketches of exercises
+            "Get a glass of water",  # show a water glass and keep track of glasses
+            "Look at something 20 feet away for 20 seconds",  # show timer
         ]
 
         # Initialize break activity window
-        self.break_window = BreakActivityWindow()
+        self.break_window = BreakActivityWindow(
+            hold_duration=self.hold_duration, breath_duration=self.breath_duration
+        )
 
         # Start amber blinking immediately as neither work nor break is active
         self.start_blinking("amber")
@@ -514,12 +558,22 @@ class ActiveBreaksApp(QSystemTrayIcon):
     def show_settings(self):
         """Display the settings dialog."""
         logging.info("Opening settings dialog")
-        dialog = SettingsDialog(self.work_duration, self.break_duration)
+        dialog = SettingsDialog(
+            self.work_duration,
+            self.break_duration,
+            self.hold_duration,
+            self.breath_duration,
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.work_duration, self.break_duration = dialog.get_settings()
+            (
+                self.work_duration,
+                self.break_duration,
+                self.hold_duration,
+                self.breath_duration,
+            ) = dialog.get_settings()
             self.save_settings()
             logging.info(
-                f"Settings updated: Work duration: {self.work_duration}, Break duration: {self.break_duration}"
+                f"Settings updated: Work duration: {self.work_duration}, Break duration: {self.break_duration}, Hold duration: {self.hold_duration}, Breath duration: {self.breath_duration}"
             )
         else:
             logging.info("Settings dialog cancelled")
@@ -529,6 +583,8 @@ class ActiveBreaksApp(QSystemTrayIcon):
         logging.debug("Saving settings")
         self.settings.setValue("work_duration", self.work_duration)
         self.settings.setValue("break_duration", self.break_duration)
+        self.settings.setValue("hold_duration", self.hold_duration)
+        self.settings.setValue("breath_duration", self.breath_duration)
         self.settings.sync()
         logging.info("Settings saved")
 
