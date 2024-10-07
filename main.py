@@ -289,16 +289,17 @@ class BreakActivityWindow(QWidget):
         logging.debug("BreakActivityWindow initialized")
 
     def start_breathing_exercise(self):
+        self.breathing_widget.show()
         self.breathing_widget.start()
 
     def stop_breathing_exercise(self):
+        self.breathing_widget.hide()
         self.breathing_widget.stop()
 
     def set_activity(self, activity):
         """Set the activity text and adjust the window size."""
         logging.debug(f"Setting break activity: {activity}")
         if activity == "Do some deep breathing exercises":
-            self.breathing_widget.show()
             self.start_breathing_exercise()
         self.activity_label.setText(activity)
         self.adjustSize()
