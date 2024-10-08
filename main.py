@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import sys
 from enum import Enum
@@ -29,6 +30,18 @@ from PyQt6.QtWidgets import QSpinBox
 from PyQt6.QtWidgets import QSystemTrayIcon
 from PyQt6.QtWidgets import QVBoxLayout
 from PyQt6.QtWidgets import QWidget
+
+
+def get_resource_path(relative_path):
+    """Get the path to a resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 
 # Set up logging
 log_dir = Path.home() / ".logs" / "active_breaks"
@@ -124,6 +137,39 @@ class SettingsDialog(QDialog):
             f"Settings retrieved: Work duration: {work_duration}, Break duration: {break_duration}, Hold duration: {hold_duration}, Breath duration: {breath_duration}"
         )
         return work_duration, break_duration, hold_duration, breath_duration
+
+
+class ImageSlideshow(QWidget):
+    def __init__(self, image_paths, delay_ms=2000):
+        super().__init__()
+
+        self.image_paths = image_paths
+        self.delay_ms = delay_ms
+        self.current_index = 0
+
+        self.layout = QVBoxLayout()
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.image_label)
+        self.setLayout(self.layout)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.show_next_image)
+        self.timer.start(self.delay_ms)
+
+        self.show_next_image()
+
+    def show_next_image(self):
+        if self.current_index >= len(self.image_paths):
+            self.current_index = 0
+
+        image_path = self.image_paths[self.current_index]
+        pixmap = QPixmap(image_path)
+        self.image_label.setPixmap(pixmap)
+        self.current_index += 1
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
 
 
 class GlassWidget(QWidget):
@@ -425,6 +471,30 @@ class BreakActivityWindow(QWidget):
         main_layout.addWidget(self.glass_widget)
         self.glass_widget.hide()
 
+        # Add ImageSlideshow
+        self.image_slideshow = ImageSlideshow(
+            [
+                get_resource_path(f)
+                for f in [
+                    "exercises/exercise-1.png",
+                    "exercises/exercise-2.png",
+                    "exercises/exercise-3.png",
+                    "exercises/exercise-4.png",
+                    "exercises/exercise-5.png",
+                    "exercises/exercise-6.png",
+                    "exercises/exercise-7.png",
+                    "exercises/exercise-8.png",
+                    "exercises/exercise-9.png",
+                    "exercises/exercise-10.png",
+                    "exercises/exercise-11.png",
+                    "exercises/exercise-12.png",
+                ]
+            ],
+            delay_ms=6000,
+        )
+        main_layout.addWidget(self.image_slideshow)
+        self.image_slideshow.hide()
+
         self.setLayout(main_layout)
         logging.debug("BreakActivityWindow initialized")
 
@@ -443,6 +513,8 @@ class BreakActivityWindow(QWidget):
             self.start_breathing_exercise()
         elif activity == "Get a glass of water":
             self.glass_widget.show()
+        elif activity == "Perform desk exercises":
+            self.image_slideshow.show()
         self.activity_label.setText(activity)
         self.adjustSize()
 
@@ -473,6 +545,7 @@ class BreakActivityWindow(QWidget):
     def hide_custom_widgets(self):
         self.stop_breathing_exercise()
         self.glass_widget.hide()
+        self.image_slideshow.hide()
 
 
 class ActiveBreaksApp(QSystemTrayIcon):
@@ -547,7 +620,6 @@ class ActiveBreaksApp(QSystemTrayIcon):
 
         # Initialize break activities
         self.break_activities = [
-            "Stand up and stretch",  # show timer
             "Take a short walk",  # show timer
             "Do some deep breathing exercises",  # breathing
             "Perform desk exercises",  # show sketches of exercises
