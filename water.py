@@ -55,6 +55,7 @@ class DrinkingGlassWidget(QWidget):
         super().__init__()
         self.setWindowTitle('2D Drinking Glass with Water Levels')
         self.setGeometry(0, 0, 200, 240)
+        self.setContentsMargins(0, 0, 0, 0)
 
         layout = QVBoxLayout()
 
@@ -62,13 +63,39 @@ class DrinkingGlassWidget(QWidget):
 
         button_layout = QHBoxLayout()
 
+        common_button_style = """
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #c0c0c0;
+                border-radius: 5px;
+                padding: 5px;
+                color: black;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+            QPushButton:pressed {
+                background-color: #d0d0d0;
+            }
+        """
+
         self.plus_button = QPushButton("+")
         self.plus_button.setFixedSize(40, 40)
         self.plus_button.clicked.connect(self.increase_level)
+        self.plus_button.setStyleSheet(common_button_style + """
+            QPushButton {
+                font-size: 14px;
+            }
+        """)
 
         self.reset_button = QPushButton("Reset")
         self.reset_button.setFixedSize(60, 40)
         self.reset_button.clicked.connect(self.reset_level)
+        self.reset_button.setStyleSheet(common_button_style + """
+            QPushButton {
+                font-size: 10px;
+            }
+        """)
 
         button_layout.addWidget(self.plus_button)
         button_layout.addWidget(self.reset_button)
