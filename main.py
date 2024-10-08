@@ -626,6 +626,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
             "Get a glass of water",  # show a water glass and keep track of glasses
             "Look at something 20 feet away for 20 seconds",  # show timer
         ]
+        self.remaining_activities = self.break_activities.copy()
 
         # Initialize break activity window
         self.break_window = BreakActivityWindow(
@@ -809,9 +810,21 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.settings.sync()
         logging.info("Settings saved")
 
+    def select_random_activity(self):
+        if not self.remaining_activities:
+            self.remaining_activities = self.break_activities.copy()
+            logging.info("All activities have been shown. Resetting the list.")
+
+        activity = random.choice(self.remaining_activities)
+        self.remaining_activities.remove(activity)
+        logging.debug(f"Selected activity: {activity}")
+        logging.debug(f"Remaining activities: {self.remaining_activities}")
+
+        return activity
+
     def show_break_activity(self):
         """Show the break activity window with a random activity."""
-        activity = random.choice(self.break_activities)
+        activity = self.select_random_activity()
         self.break_window.set_activity(activity)
 
         # Position the window just below the system tray icon
