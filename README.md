@@ -65,8 +65,3 @@ feature requests.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## TODO
-
-- [ ] Make Break window translucent
-- [ ] Expand Break window and display multi-line activities
