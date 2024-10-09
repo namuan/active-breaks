@@ -1,6 +1,7 @@
-# Active Breaks
-
-Stay Productive, Take Breaks
+<p align="center">
+  <img src="https://github.com/namuan/active-breaks/raw/main/assets/icon.png" width="128px"/>
+</p>
+<h1 align="center">Active Breaks :: Stay Productive, Take Breaks</h1>
 
 ActiveBreaks is a system tray application designed to help users maintain a healthy work-break balance by managing
 active breaks during work sessions.
