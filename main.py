@@ -490,7 +490,7 @@ class BreakActivityWindow(QWidget):
                     "exercises/exercise-12.png",
                 ]
             ],
-            delay_ms=6000,
+            delay_ms=10000,
         )
         main_layout.addWidget(self.image_slideshow)
         self.image_slideshow.hide()
