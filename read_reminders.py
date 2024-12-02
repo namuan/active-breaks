@@ -14,6 +14,7 @@ from Foundation import NSDate
 
 
 class Reminder(NamedTuple):
+    id: str  # Added id field to identify reminders
     title: str
     due_date: Optional[datetime]
     notes: Optional[str]
@@ -51,12 +52,34 @@ class RemindersAPI:
                 due_date = datetime.fromtimestamp(ns_date.timeIntervalSince1970())
 
         return Reminder(
+            id=reminder.calendarItemIdentifier(),  # Store the reminder's unique identifier
             title=reminder.title(),
             due_date=due_date,
             notes=reminder.notes(),
             completed=reminder.isCompleted(),
             url=reminder.URL(),
         )
+
+    def _save_reminder(self, ek_reminder) -> bool:
+        """
+        Internal method to save changes to a reminder.
+
+        Args:
+            ek_reminder: The EKReminder object to save
+
+        Returns:
+            bool: True if save was successful
+
+        Raises:
+            RuntimeError: If saving fails
+        """
+        error = None
+        success = self.event_store.saveReminder_commit_error_(ek_reminder, True, error)
+
+        if not success:
+            raise RuntimeError(f"Failed to update reminder: {error}")
+
+        return success
 
     def get_all_calendars(self):
         """Get list of all reminder calendar names"""
@@ -116,6 +139,95 @@ class RemindersAPI:
 
         return dict(reminders_by_calendar)
 
+    def pause_work(self, reminder: Reminder) -> Reminder:
+        """
+        Removes [WIP] prefix from the reminder title.
+
+        :param reminder: Reminder object to pause
+        :return: Updated reminder object
+        """
+        # Fetch the actual EKReminder object using the identifier
+        ek_reminder = self.event_store.calendarItemWithIdentifier_(reminder.id)
+
+        if not ek_reminder:
+            raise ValueError("Reminder not found")
+
+        current_title = ek_reminder.title()
+
+        # Check if marked as WIP
+        if current_title.startswith("[WIP]"):
+            # Remove the [WIP] prefix and any extra spaces
+            new_title = current_title.replace("[WIP]", "").strip()
+            ek_reminder.setTitle_(new_title)
+            self._save_reminder(ek_reminder)
+
+        # Return updated reminder
+        return self._convert_reminder(ek_reminder)
+
+    def start_work(self, reminder: Reminder) -> Reminder:
+        """
+        Mark a reminder as work in progress by adding [WIP] prefix to its title
+
+        Args:
+            reminder: Reminder object to update
+
+        Returns:
+            Updated Reminder object
+        """
+        # Fetch the actual EKReminder object using the identifier
+        ek_reminder = self.event_store.calendarItemWithIdentifier_(reminder.id)
+
+        if not ek_reminder:
+            raise ValueError("Reminder not found")
+
+        current_title = ek_reminder.title()
+
+        # Check if already marked as WIP
+        if not current_title.startswith("[WIP]"):
+            # Update the title with [WIP] prefix
+            new_title = f"[WIP] {current_title}"
+            ek_reminder.setTitle_(new_title)
+            self._save_reminder(ek_reminder)
+
+        # Return updated reminder
+        return self._convert_reminder(ek_reminder)
+
+    def complete_work(self, reminder: Reminder) -> Reminder:
+        """
+        Complete the work by setting the complete flag to True.
+        Also removes [WIP] prefix if present.
+
+        Args:
+            reminder: Reminder object to complete
+
+        Returns:
+            Updated reminder object
+
+        Raises:
+            ValueError: If reminder not found
+            RuntimeError: If saving fails
+        """
+        # Fetch the actual EKReminder object using the identifier
+        ek_reminder = self.event_store.calendarItemWithIdentifier_(reminder.id)
+
+        if not ek_reminder:
+            raise ValueError("Reminder not found")
+
+        # Set completion status to True
+        ek_reminder.setCompleted_(True)
+
+        # Remove [WIP] prefix if present
+        current_title = ek_reminder.title()
+        if current_title.startswith("[WIP]"):
+            new_title = current_title.replace("[WIP]", "").strip()
+            ek_reminder.setTitle_(new_title)
+
+        # Save changes
+        self._save_reminder(ek_reminder)
+
+        # Return updated reminder
+        return self._convert_reminder(ek_reminder)
+
 
 # Usage example:
 def print_reminders(reminders_dict: Dict[str, List[Reminder]]):
@@ -123,6 +235,7 @@ def print_reminders(reminders_dict: Dict[str, List[Reminder]]):
         print(f"\n=== {calendar_name} Calendar ===")
         for reminder in reminders:
             print(f"Title: {reminder.title}")
+            print(f"ID: {reminder.id}")
             if reminder.due_date:
                 print(f"Due Date: {reminder.due_date}")
             if reminder.notes:
@@ -136,14 +249,15 @@ if __name__ == "__main__":
     # Create API instance
     api = RemindersAPI()
 
-    # Get all calendar names
-    calendars = api.get_all_calendars()
-    print("Available calendars:", calendars)
-
     # Get all incomplete reminders
     all_reminders = api.get_incomplete_reminders()
     print_reminders(all_reminders)
 
-    # Get reminders only from specific calendars
-    # bookmarks_reminders = api.get_incomplete_reminders(["Bookmarks"])
-    # print_reminders(bookmarks_reminders)
+    # Example: Start work on the first reminder from any calendar
+    for calendar_reminders in all_reminders.values():
+        if calendar_reminders:
+            first_reminder = calendar_reminders[1]
+            updated_reminder = api.pause_work(first_reminder)
+            print("\nUpdated reminder:")
+            print(f"Title: {updated_reminder.title}")
+            break
