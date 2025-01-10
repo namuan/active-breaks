@@ -43,6 +43,7 @@ app = BUNDLE(coll,
                 'CFBundleVersion': '1.0.0',
                 'CFBundleShortVersionString': '1.0.0',
                 'NSPrincipalClass': 'NSApplication',
-                'NSHighResolutionCapable': 'True'
+                'NSHighResolutionCapable': True,
+                'LSUIElement': True,
                 }
              )
