@@ -17,6 +17,7 @@ from PyQt6.QtGui import QBrush
 from PyQt6.QtGui import QColor
 from PyQt6.QtGui import QIcon
 from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtGui import QPainter
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QApplication
@@ -427,9 +428,9 @@ class FullScreenBlocker(QWidget):
         self.setWindowOpacity(0.7)
         self.setStyleSheet("background-color: rgba(0, 0, 0, 180);")
 
-        # Set the window to cover the entire screen
-        screen = QApplication.primaryScreen().geometry()
-        self.setGeometry(screen)
+        # Set the window to cover all screens (multi-monitor support)
+        total_geometry = QApplication.primaryScreen().virtualGeometry()
+        self.setGeometry(total_geometry)
 
         # Block all keyboard and mouse events
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -438,12 +439,12 @@ class FullScreenBlocker(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent):
         """Block all key presses."""
-        event.ignore()
+        event.accept()
         logging.debug("FullScreenBlocker: Key press blocked")
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         """Block all mouse clicks."""
-        event.ignore()
+        event.accept()
         logging.debug("FullScreenBlocker: Mouse press blocked")
 
 
