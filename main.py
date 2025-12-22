@@ -422,18 +422,18 @@ class FullScreenBlocker(QWidget):
             | Qt.WindowType.Tool,
         )
         logging.debug("Initializing FullScreenBlocker")
-        
+
         # Make the window translucent
         self.setWindowOpacity(0.7)
         self.setStyleSheet("background-color: rgba(0, 0, 0, 180);")
-        
+
         # Set the window to cover the entire screen
         screen = QApplication.primaryScreen().geometry()
         self.setGeometry(screen)
-        
+
         # Block all keyboard and mouse events
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        
+
         logging.debug("FullScreenBlocker initialized")
 
     def keyPressEvent(self, event: QKeyEvent):
