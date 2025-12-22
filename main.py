@@ -424,9 +424,9 @@ class FullScreenBlocker(QWidget):
         )
         logging.debug("Initializing FullScreenBlocker")
 
-        # Make the window translucent
+        # Make the window translucent with a dark background
         self.setWindowOpacity(0.7)
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 180);")
+        self.setStyleSheet("background-color: black;")
 
         # Set the window to cover all screens (multi-monitor support)
         total_geometry = QApplication.primaryScreen().virtualGeometry()
@@ -440,12 +440,10 @@ class FullScreenBlocker(QWidget):
     def keyPressEvent(self, event: QKeyEvent):
         """Block all key presses."""
         event.accept()
-        logging.debug("FullScreenBlocker: Key press blocked")
 
     def mousePressEvent(self, event: QMouseEvent):
         """Block all mouse clicks."""
         event.accept()
-        logging.debug("FullScreenBlocker: Mouse press blocked")
 
 
 class BreakActivityWindow(QWidget):
