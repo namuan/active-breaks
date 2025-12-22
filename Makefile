@@ -21,6 +21,10 @@ clean: ## Clean package
 package: clean pre-commit ## Run installer
 	pyinstaller main.spec
 
+setup: ## Re-initiates virtualenv
+	@make install-macosx
+	@echo "Installation completed"
+
 install-macosx: package ## Installs application in users Application folder
 	./scripts/install-macosx.sh ActiveBreaks.app
 
