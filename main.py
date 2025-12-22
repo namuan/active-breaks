@@ -446,6 +446,44 @@ class FullScreenBlocker(QWidget):
         event.accept()
 
 
+class MultiScreenBlocker:
+    def __init__(self):
+        self._blockers_by_screen = {}
+        self._visible = False
+        app = QApplication.instance()
+        for screen in app.screens():
+            blocker = FullScreenBlocker()
+            blocker.setGeometry(screen.geometry())
+            self._blockers_by_screen[screen] = blocker
+        app.screenAdded.connect(self._on_screen_added)
+        app.screenRemoved.connect(self._on_screen_removed)
+
+    def _on_screen_added(self, screen):
+        blocker = FullScreenBlocker()
+        blocker.setGeometry(screen.geometry())
+        self._blockers_by_screen[screen] = blocker
+        if self._visible:
+            blocker.show()
+
+    def _on_screen_removed(self, screen):
+        blocker = self._blockers_by_screen.pop(screen, None)
+        if blocker:
+            blocker.hide()
+            blocker.deleteLater()
+
+    def show(self):
+        self._visible = True
+        for blocker in self._blockers_by_screen.values():
+            blocker.show()
+            blocker.raise_()
+            blocker.activateWindow()
+
+    def hide(self):
+        self._visible = False
+        for blocker in self._blockers_by_screen.values():
+            blocker.hide()
+
+
 class BreakActivityWindow(QWidget):
     def __init__(self, hold_duration: int, breath_duration: int, parent=None):
         super().__init__(
@@ -669,7 +707,8 @@ class ActiveBreaksApp(QSystemTrayIcon):
         )
 
         # Initialize full screen blocker
-        self.screen_blocker = FullScreenBlocker()
+        self.screen_blocker = MultiScreenBlocker()
+        self.screen_blocker.show()
 
         # Start amber blinking immediately as neither work nor break is active
         self.start_blinking("amber")
@@ -727,11 +766,12 @@ class ActiveBreaksApp(QSystemTrayIcon):
         logging.info("Stopping timer")
         self.timer.stop()
         self.is_active = False
+        self.is_working = False
         self.update_icon(0)
         self.setToolTip("")
         self.update_menu_text()
         self.break_window.hide()
-        self.screen_blocker.hide()  # Hide screen blocker when timer stops
+        self.screen_blocker.show()
         self.start_blinking("amber")  # Start amber blinking when timer stops
         self.break_window.hide_custom_widgets()
         logging.debug("Timer stopped and UI updated")
