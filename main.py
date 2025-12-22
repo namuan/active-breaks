@@ -411,6 +411,42 @@ class BreathingWidget(QWidget):
     dot_size = pyqtProperty(int, get_dot_size, set_dot_size)
 
 
+class FullScreenBlocker(QWidget):
+    """Full screen translucent blocker window that prevents interaction during breaks."""
+
+    def __init__(self, parent=None):
+        super().__init__(
+            parent,
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool,
+        )
+        logging.debug("Initializing FullScreenBlocker")
+        
+        # Make the window translucent
+        self.setWindowOpacity(0.7)
+        self.setStyleSheet("background-color: rgba(0, 0, 0, 180);")
+        
+        # Set the window to cover the entire screen
+        screen = QApplication.primaryScreen().geometry()
+        self.setGeometry(screen)
+        
+        # Block all keyboard and mouse events
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        
+        logging.debug("FullScreenBlocker initialized")
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Block all key presses."""
+        event.ignore()
+        logging.debug("FullScreenBlocker: Key press blocked")
+
+    def mousePressEvent(self, event):
+        """Block all mouse clicks."""
+        event.ignore()
+        logging.debug("FullScreenBlocker: Mouse press blocked")
+
+
 class BreakActivityWindow(QWidget):
     def __init__(self, hold_duration: int, breath_duration: int, parent=None):
         super().__init__(
@@ -633,6 +669,9 @@ class ActiveBreaksApp(QSystemTrayIcon):
             hold_duration=self.hold_duration, breath_duration=self.breath_duration
         )
 
+        # Initialize full screen blocker
+        self.screen_blocker = FullScreenBlocker()
+
         # Start amber blinking immediately as neither work nor break is active
         self.start_blinking("amber")
 
@@ -667,6 +706,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.update_timer()
         self.update_menu_text()
         self.stop_blinking()  # Stop blinking when work starts
+        self.screen_blocker.hide()  # Hide screen blocker when work starts
         logging.debug(f"Work timer started. Duration: {self.work_duration} seconds")
 
     def start_break(self):
@@ -680,6 +720,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.update_menu_text()
         self.show_break_activity()
         self.stop_blinking()  # Stop blinking when break starts
+        self.screen_blocker.show()  # Show full screen blocker during break
         logging.debug(f"Break timer started. Duration: {self.break_duration} seconds")
 
     def stop_timer(self):
@@ -691,6 +732,7 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.setToolTip("")
         self.update_menu_text()
         self.break_window.hide()
+        self.screen_blocker.hide()  # Hide screen blocker when timer stops
         self.start_blinking("amber")  # Start amber blinking when timer stops
         self.break_window.hide_custom_widgets()
         logging.debug("Timer stopped and UI updated")
