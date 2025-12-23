@@ -1,7 +1,7 @@
 [project]
 name = "active-breaks"
 version = "0.1.0"
-description = "System tray app to help maintain a healthy work-break balance by managing active breaks during work sessions."
+description = "Maintain a healthy work-break balance by managing active breaks during work sessions."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["PyQt6"]
