@@ -34,16 +34,16 @@ The break lasts for 5 minutes by default but both the **work** and **break** tim
 
 ## Getting Started
 
-* Install the required dependencies:
+* Install dependencies with uv:
 
 ```shell
-pip install -r requirements.txt
+uv sync
 ```
 
 * Run the application:
 
 ```shell
-python main.py
+uv run python main.py
 ```
 
 * The ActiveBreaks icon will appear in your system tray. Right-click to access the menu and start using the

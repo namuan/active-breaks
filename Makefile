@@ -1,25 +1,23 @@
 export PROJECTNAME=$(shell basename "$(PWD)")
-PY=./venv/bin/python3
 
 .SILENT: ;               # no need for @
 
 deps: ## Install dependencies
-	$(PY) -m pip install --upgrade -r requirements-dev.txt
-	$(PY) -m pip install --upgrade pip
+	uv sync
 
 pre-commit: ## Manually run all precommit hooks
-	./venv/bin/pre-commit install
-	./venv/bin/pre-commit run --all-files
+	uv run pre-commit install
+	uv run pre-commit run --all-files
 
 pre-commit-tool: ## Manually run a single pre-commit hook
-	./venv/bin/pre-commit run $(TOOL) --all-files
+	uv run pre-commit run $(TOOL) --all-files
 
 clean: ## Clean package
 	find . -type d -name '__pycache__' | xargs rm -rf
 	rm -rf build dist
 
 package: clean pre-commit ## Run installer
-	./venv/bin/pyinstaller main.spec
+	uv run pyinstaller main.spec
 
 setup: ## Re-initiates virtualenv
 	@make install-macosx
