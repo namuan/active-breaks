@@ -6,6 +6,14 @@
 ActiveBreaks is a system tray application designed to help users maintain a healthy work-break balance by managing
 active breaks during work sessions.
 
+## Features
+
+- Menu bar / system tray app with Work/Break timers
+- Configurable work, break, hold, and breathing durations
+- Break activities (breathing exercise, desk exercises, hydration reminder, 20-20-20)
+- Full-screen break blocker across multiple monitors
+- Automatic work → break transition with a brief pre-break blink
+
 ## Motivation
 
 I wanted an application which works like Pomodoro as well as have pre-defined things to do during the break.
@@ -34,20 +42,15 @@ The break lasts for 5 minutes by default but both the **work** and **break** tim
 
 ## Getting Started
 
-* Install dependencies with uv:
+1. Download (or clone) this repo.
+2. Run the installer script:
 
 ```shell
-uv sync
+./install.command
 ```
 
-* Run the application:
-
-```shell
-uv run python main.py
-```
-
-* The ActiveBreaks icon will appear in your system tray. Right-click to access the menu and start using the
-  application.
+3. Launch `ActiveBreaks.app` from `~/Applications`.
+4. The ActiveBreaks icon will appear in your menu bar / system tray. Right-click to access the menu.
 
 ## Usage
 
@@ -64,4 +67,4 @@ feature requests.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
