@@ -524,7 +524,9 @@ class BreakActivityWindow(QWidget):
     def __init__(self, hold_duration: int, breath_duration: int, parent=None):
         super().__init__(
             parent,
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool,
         )
         logging.debug("Initializing BreakActivityWindow")
         self.setFixedWidth(200)
@@ -544,6 +546,8 @@ class BreakActivityWindow(QWidget):
                 background-color: #ff0000;
             }
         """)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow, True)
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -791,9 +795,9 @@ class ActiveBreaksApp(QSystemTrayIcon):
         self.timer.start(1000)  # Update every second
         self.update_timer()
         self.update_menu_text()
-        self.show_break_activity()
         self.stop_blinking()  # Stop blinking when break starts
         self.screen_blocker.show()  # Show full screen blocker during break
+        self.show_break_activity()
         logging.debug(f"Break timer started. Duration: {self.break_duration} seconds")
 
     def stop_timer(self):
@@ -948,6 +952,8 @@ class ActiveBreaksApp(QSystemTrayIcon):
             icon_geometry.x(), icon_geometry.y() + icon_geometry.height()
         )
         self.break_window.show()
+        self.break_window.raise_()
+        self.break_window.activateWindow()
         logging.info(f"Break activity shown: {activity}")
 
     def quit_app(self):
